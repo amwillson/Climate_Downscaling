@@ -78,10 +78,15 @@ tmean <- as.data.frame(tmean)
 
 # Filter precipitation matrix to include only spatial area of interest
 # Then reformat to make easier to average over years while keeping separate months
+ppt_cols <- colnames(ppt)
+ppt_cols <- ppt_cols[-(1033:1034)]
+
 ppt_long <- ppt |>
+  rename(Longitude = x,
+         Latitude = y) |>
   filter(Latitude >= min_lat & Latitude <= max_lat) |>
   filter(Longitude >= min_lon & Longitude <= max_lon) |>
-  pivot_longer(colnames(ppt)[3]:colnames(ppt[ncol(ppt)]), 
+  pivot_longer(all_of(ppt_cols), 
                names_to = 'var', values_to = 'PPT')
 
 # Separate year and month from the "var" variable
@@ -97,12 +102,15 @@ average_ppt <- ppt_long |>
   summarize(PPT = mean(PPT))
 
 # Repeat for temperature
+tmean_cols <- colnames(tmean)
+tmean_cols <- tmean_cols[-(1033:1034)]
+
 tmean_long <- tmean |>
   rename(Latitude = y,
          Longitude = x) |>
   filter(Latitude >= min_lat & Latitude <= max_lat) |>
   filter(Longitude >= min_lon & Longitude <= max_lon) |>
-  pivot_longer(colnames(tmean)[3]:colnames(tmean[ncol(tmean)]),
+  pivot_longer(all_of(tmean_cols),
                names_to = 'var', values_to = 'T')
 
 tmean_long <- tmean_long |>
@@ -121,13 +129,8 @@ average_tmean$month <- as.factor(average_tmean$month)
 average_clim <- cbind(average_ppt, average_tmean$T)
 colnames(average_clim)[ncol(average_clim)] <- 'T'
 
-# Map or study region
-states <- map_data('state') |>
-  filter(region %in% c('minnesota', 'wisconsin', 'michigan'))
-
 # Plot precipitation
 average_clim |>
-  #filter(month %in% c('1', '4', '7', '10')) |>
   ggplot(aes(x = Longitude, y = Latitude, color = PPT)) +
   geom_point() +
   geom_polygon(data = states, aes(x = long, y = lat, group = group), color = 'black', fill = NA) +
@@ -136,4 +139,14 @@ average_clim |>
   theme_void()
 
 
-### NEED TO CHANGE PROJECTION
+# Plot temperature
+average_clim |>
+  ggplot(aes(x = Longitude, y = Latitude, color = T)) +
+  geom_point() +
+  geom_polygon(data = states, aes(x = long, y = lat, group = group), color = 'black', fill = NA) +
+  facet_wrap(~month) +
+  scale_color_viridis_c(option = 'H') +
+  theme_void()
+
+# Save
+save(average_clim, file = 'Climate_Data/processed_climate.RData')
