@@ -52,25 +52,11 @@ proj4string(tmean) <- CRS('+init=epsg:4269')
 ppt <- spTransform(ppt, CRS('+init=epsg:4326'))
 tmean <- spTransform(tmean, CRS('+init=epsg:4326'))
 
-# Map of region of interest
-states <- map_data('state') |>
-  filter(region %in% c('michigan', 'wisconsin', 'minnesota'))
-
-# Check to make sure the projection looks correct
-states |>
-  ggplot() +
-  geom_point(data = test, aes(x = x, y = y)) +
-  geom_polygon(aes(x = long, y = lat, group = group), fill = NA, color = 'white')
-
 # Boundaries of pollen data
 min_lon <- -98.11711
 max_lon <- -82.59814
 min_lat <- 41.50088
 max_lat <- 50.17222
-
-# Store coordinates
-ppt_coords <- as.data.frame(ppt@coords)
-tmean_coords <- as.data.frame(tmean@coords)
 
 # Change back to regular data frame
 ppt <- as.data.frame(ppt)
@@ -129,6 +115,14 @@ average_tmean$month <- as.factor(average_tmean$month)
 average_clim <- cbind(average_ppt, average_tmean$T)
 colnames(average_clim)[ncol(average_clim)] <- 'T'
 
+# Combine precipitation and temperature with years
+prism_clim <- cbind(ppt_long, tmean_long$T)
+colnames(prism_clim)[ncol(prism_clim)] <- 'T'
+
+# Plot of region
+states <- map_data('state') |>
+  filter(region %in% c('minnesota', 'michigan', 'wisconsin'))
+
 # Plot precipitation
 average_clim |>
   ggplot(aes(x = Longitude, y = Latitude, color = PPT)) +
@@ -149,4 +143,4 @@ average_clim |>
   theme_void()
 
 # Save
-save(average_clim, file = 'Climate_Data/processed_climate.RData')
+save(average_clim, prism_clim, file = 'Climate_Data/processed_climate.RData')

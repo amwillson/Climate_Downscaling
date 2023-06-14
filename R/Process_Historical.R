@@ -202,3 +202,8 @@ clim_historical |>
   scale_color_viridis_c(option = 'C') +
   theme_void() +
   theme(strip.text = element_text(size = 12))
+
+# Save
+save(clim_historical, file = 'CMIP_Reconstructions/processed_historical.RData')
+
+### Need to convert precipitation prism data to mm/month
