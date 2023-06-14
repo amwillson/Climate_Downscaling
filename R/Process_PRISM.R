@@ -143,4 +143,6 @@ average_clim |>
   theme_void()
 
 # Save
-save(average_clim, prism_clim, file = 'Climate_Data/processed_climate.RData')
+save(average_clim, file = 'Climate_Data/average_prism.RData')
+save(prism_clim, file = 'Climate_Data/prism_clim.RData')
+#save(average_clim, prism_clim, file = 'Climate_Data/processed_climate.RData')
