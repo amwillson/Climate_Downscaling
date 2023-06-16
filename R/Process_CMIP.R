@@ -144,7 +144,7 @@ clim <- clim |>
   mutate(Longitude = if_else(Longitude > 180, -360 + Longitude, Longitude), # Make longitude between -180 and 180 degrees
          Time = as.Date(Time, origin = c('1850-01-01')),# Reformat time as the date
          Month = month(Time),
-         Year = 1950 - year(ymd(Time) - years(7000)), # The dates are wrong so subtract 7000 years and convert to years BP
+         Year = 1950 - year(ymd(Time) - years(7000)), # The dates are wrong so subtract 7000 years and convert to years before 1950
          Temperature = Temperature - 273.15, # Convert Temperature to Celsius
          Precipitation = Precipitation * 24 * 60 * 60 * 30) # Convert Precipitation to mm/month
 
