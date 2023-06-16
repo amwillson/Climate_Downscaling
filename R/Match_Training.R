@@ -7,9 +7,11 @@ library(sp)
 library(rgeos)
 library(ggplot2)
 
+# Load data from previous steps in workflow
 load('Climate_Data/prism_clim.RData')
 load('CMIP_Reconstructions/processed_historical.RData')
 
+# Format data
 prism_clim <- prism_clim |>
   rename(Year = year,
          Month = month) |>
@@ -36,23 +38,31 @@ d <- gDistance(spgeom1 = latlong_pairs, spgeom2 = prism_latlong, byid = T)
 # Find closest prism data point to each historical data point
 mins <- apply(d, 2, which.min)
 
+# Make dataframe of each unique location for cmip
 spat_historical <- clim_historical |>
   filter(Time == unique(Time)[1]) |>
   mutate(loc = paste0(Latitude,'_',Longitude),
          match = mins)
 
+# Make dataframe of each unique location for prism
 spat_prism <- prism_clim |>
   filter(var == unique(var)[1])
 
+# Make dataframe of all locations of cmip data
 full_spat_historical <- clim_historical |>
   mutate(loc = paste0(Latitude,'_',Longitude))
 
+# Make dataframe of the location and the corresponding
+# index to match cmip and prism dataframes
 spat_map <- spat_historical |>
   select(loc, match)
 
+# Storage
 full_data <- matrix(, nrow = nrow(full_spat_historical),
                     ncol = 11)
 
+# Loop over all locations with cmip data and find
+# corresponding prism data
 for(i in restart:nrow(full_spat_historical)){
   loc <- full_spat_historical$loc[i]
   match <- spat_map$match[which(spat_map$loc == loc)]
@@ -74,12 +84,14 @@ for(i in restart:nrow(full_spat_historical)){
   full_data[i,11] <- temp$T # prism temperature
 }
 
+# Formatting
 full_data <- as.data.frame(full_data)
 colnames(full_data) <- c('Match', 'CMIP_Longitude', 'CMIP_Latitude',
                          'CMIP_Temperature', 'CMIP_Precipitation',
                          'Year', 'Month', 'PRISM_Latitude', 'PRISM_Longitude',
                          'PRISM_Precipitation', 'PRISM_Temperature')
 
+# Plot cmip and prism temperature
 full_data |>
   ggplot() +
   geom_point(aes(x = CMIP_Temperature, y = PRISM_Temperature)) +
@@ -92,6 +104,7 @@ full_data |>
   geom_smooth(aes(x = CMIP_Temperature, y = PRISM_Temperature), method = 'lm') +
   geom_abline(slope = 1, color = 'pink')
 
+# plot cmip and prism precipitation
 full_data |>
   ggplot() +
   geom_point(aes(x = CMIP_Precipitation, y = PRISM_Precipitation)) +
@@ -104,4 +117,5 @@ full_data |>
   geom_smooth(aes(x = CMIP_Precipitation, y = PRISM_Precipitation), method = 'lm') +
   geom_abline(slope = 1, color = 'pink')
 
+# Save
 save(full_data, file = 'Climate_Data/prism_historical.RData')

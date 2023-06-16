@@ -205,5 +205,3 @@ clim_historical |>
 
 # Save
 save(clim_historical, file = 'CMIP_Reconstructions/processed_historical.RData')
-
-### Need to convert precipitation prism data to mm/month
