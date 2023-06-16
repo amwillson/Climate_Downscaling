@@ -7,6 +7,7 @@ library(dplyr)
 library(sp)
 library(rgeos)
 library(tibble)
+library(ggplot2)
 
 load('CMIP_Reconstructions/processed.RData')
 load('full_melt_UMW.RData')
@@ -120,6 +121,40 @@ match_clim <- match_clim |>
          CMIP_Latitude = Latitude.y) |>
   select(-loc_time, -loc.x, -match, -loc.y)
 
-# Make a dataframe of the covariates of our temperature model
-predict_temp <- match_clim |>
-  select()
+# Reformat data frame to have monthly climate in "long" format
+match_clim_long <- match_clim |>
+  pivot_longer(Temperature_1:Precipitation_12) |>
+  mutate(var = substr(name, 1, 1),
+         Month = as.numeric(sub('.*_','',name))) |>
+  select(-name) |>
+  pivot_wider(names_from = var, values_from = value) |>
+  dplyr::rename(CMIP_Temperature = T,
+                CMIP_Precipitation = P,
+                # This is something stupid I did in the model
+                # and since you have to have the same variable
+                # names to run the model, I'm just making the change
+                # here
+                PRISM_Latitude = Pollen_Latitude,
+                PRISM_Longitude = Pollen_Longitude)
+
+# Make datafarme of the covariates of our temperature model
+predict_temp <- match_clim_long |>
+  select(CMIP_Temperature, Month, PRISM_Latitude)
+
+# Make predictions for all locations with pollen data
+predictions_temp <- predict(fit_temp, predict_temp)
+
+# Make a dataframe of the covariates of our precipitation model
+predict_precip <- match_clim_long |>
+  select(CMIP_Precipitation, Month, PRISM_Latitude, PRISM_Longitude)
+
+# Make predictions for all locations with pollen data
+predictions_precip <- predict(fit_precip, predict_precip)
+
+# Save predictins
+save(predictions_temp, predictions_precip, file = 'CMIP_Reconstructions/downscaled_past2k.RData')
+
+# data to have states in a figure
+states <- map_data('state') |> filter(region %in% c('michigan', 'minnesota', 'wisconsin'))
+
+# Plot predictions in 
