@@ -158,7 +158,7 @@ match_clim |>
   scale_fill_viridis_c(option = 'A', name = 'Difference\n(deg. C)')
 
 match_clim |>
-  filter(Year == max(Year)) |>
+  filter(Year == min(Year)) |>
   mutate(difference = abs(PRISM_Precipitation - Predicted_Precipitation)) |>
   ggplot(aes(x = PRISM_Longitude, y = PRISM_Latitude, fill = difference)) +
   geom_raster() +
