@@ -1,5 +1,4 @@
 ## Downscaling past2k simulations
-## THIS SCRIPT IS NOT FINISHED
 
 rm(list = ls())
 
@@ -8,6 +7,8 @@ library(sp)
 library(rgeos)
 library(tibble)
 library(ggplot2)
+library(tidyr)
+library(matrixStats)
 
 load('CMIP_Reconstructions/processed.RData')
 load('full_melt_UMW.RData')
@@ -109,7 +110,7 @@ match_clim <- full_spat_pollen |>
          Longitude = long,
          Latitude = lat)
 
-# Spatailly match each pollen point to a climate point
+# Spatially match each pollen point to a climate point
 match_clim <- match_clim |>
   left_join(full_spat_climate, by = c('Year', 'match'))
 
@@ -151,10 +152,67 @@ predict_precip <- match_clim_long |>
 # Make predictions for all locations with pollen data
 predictions_precip <- predict(fit_precip, predict_precip)
 
-# Save predictins
+# Save predictions
 save(predictions_temp, predictions_precip, file = 'CMIP_Reconstructions/downscaled_past2k.RData')
 
-# data to have states in a figure
-states <- map_data('state') |> filter(region %in% c('michigan', 'minnesota', 'wisconsin'))
+# Insert into dataframe with pollen and climate information
+match_clim_long$Downscale_Temperature <- predictions_temp
+match_clim_long$Downscale_Precipitation <- predictions_precip
 
-# Plot predictions in 
+# Pivot climate portion of dataframe
+downscale_climate_wide <- match_clim_long |>
+  select(-CMIP_Longitude, -CMIP_Latitude, -CMIP_Temperature, -CMIP_Precipitation) |>
+  pivot_wider(names_from = 'Month',
+              values_from = Downscale_Temperature:Downscale_Precipitation,
+              id_cols = c('Year', 'PRISM_Longitude', 'PRISM_Latitude'))
+
+# Match pivoted data with pollen
+xydata <- match_clim_long |>
+  filter(Month == 1) |>
+  select(Year:PRISM_Latitude) |>
+  full_join(downscale_climate_wide, by = c('Year', 'PRISM_Longitude', 'PRISM_Latitude')) |>
+  filter(Year < 2000)
+
+# Plotting to make sure everything looks correct
+states <- map_data('state') |> filter(region == c('michigan', 'minnesota', 'wisconsin'))
+
+xydata |>
+  select(-(Downscale_Precipitation_1:Downscale_Precipitation_12)) |>
+  pivot_longer(Downscale_Temperature_1:Downscale_Temperature_12, names_to = 'Variable', values_to = 'Value') |>
+  ggplot(aes(x = PRISM_Longitude, y = PRISM_Latitude, color = Value)) +
+  geom_polygon(data = states, aes(x = long, y = lat, group = group), color = 'black', fill = NA) +
+  geom_point() +
+  facet_wrap(~Variable)
+
+xydata |>
+  select(-(Downscale_Temperature_1:Downscale_Temperature_12)) |>
+  pivot_longer(Downscale_Precipitation_1:Downscale_Precipitation_12, names_to = 'Variable', values_to = 'Value') |>
+  ggplot(aes(x = PRISM_Longitude, y = PRISM_Latitude, color = Value)) +
+  geom_polygon(data = states, aes(x = long, y = lat, group = group), color = 'black', fill = NA) +
+  geom_point() +
+  facet_wrap(~Variable)
+
+# Subset for only monthly temperature  columns
+summary_temp <- xydata |>
+  select(Downscale_Temperature_1:Downscale_Temperature_12)
+
+# Find mean and SD (we're more interested in these summary statistics than monthly values)
+summary_temp$Mean <- rowMeans(summary_temp)
+summary_temp$SD <- rowSds(as.matrix(summary_temp[,1:12]))
+
+# Do the same for precipitation
+summary_precip <- xydata |>
+  select(Downscale_Precipitation_1:Downscale_Precipitation_12)
+
+summary_precip$Mean <- rowMeans(summary_precip)
+summary_precip$SD <- rowSds(as.matrix(summary_precip[,1:12]))
+
+# Put these summary statistics in the full data frame
+xydata$Mean_Temperature <- summary_temp$Mean
+xydata$SD_Temperature <- summary_temp$SD
+xydata$Mean_Precipitation <- summary_precip$Mean
+xydata$SD_Precipitation <- summary_precip$SD
+
+# Save!
+save(xydata, file = 'downscaled_processed_xydata.RData')
+save(xydata, file = '~/Google Drive 2/longterm_feedbacks/FossilPollen/Data/downscaled_processed_xydata.RData')
