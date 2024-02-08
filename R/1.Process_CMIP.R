@@ -8,6 +8,7 @@ library(reshape2)
 library(dplyr)
 library(ggplot2)
 library(sf)
+library(reticulate)
 
 # Make list of files to read in
 clim_pr_files <- list.files('CMIP_Reconstructions/Precipitation/')
@@ -144,7 +145,8 @@ clim <- clim |>
   mutate(Longitude = if_else(Longitude > 180, -360 + Longitude, Longitude), # Make longitude between -180 and 180 degrees
          Time = as.Date(Time, origin = c('1850-01-01')),# Reformat time as the date
          Month = month(Time),
-         Year = 1950 - year(ymd(Time) - years(7000)), # The dates are wrong so subtract 7000 years and convert to years before 1950
+         Year = year(ymd(Time) - years(7000)), # The dates are wrong so subtract 7000 years
+         YBP = 1950 - Year, # convert to years before present
          Temperature = Temperature - 273.15, # Convert Temperature to Celsius
          Precipitation = Precipitation * 24 * 60 * 60 * 30) # Convert Precipitation to mm/month
 

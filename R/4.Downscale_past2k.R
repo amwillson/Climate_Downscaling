@@ -16,12 +16,12 @@ load('Fit/latlon_fit.RData')
 
 # Take only one year to get unique locations
 # All locations have data for all time points
-spat_climate <- clim |> filter(Year == 1900)
+spat_climate <- clim |> filter(Time == unique(Time)[1])
 # make spatial data object
 coordinates(spat_climate) <- ~Longitude+Latitude
 
 # Use the pollen dataset to identify all the locations we need climate for
-spat_pollen <- full_melt |> filter(time == 1900)
+spat_pollen <- full_melt |> filter(time == unique(time)[1])
 coordinates(spat_pollen) <- ~long+lat
 
 # Find distance between all points
@@ -34,7 +34,7 @@ mins <- apply(d, 2, which.min)
 # the pollen dataset along with the index of the corresponding
 # climate point
 spat_pollen <- full_melt |>
-  filter(time == 1900) |>
+  filter(time == unique(time)[1]) |>
   mutate(loc = paste0(lat,'_',long),
          match = mins) |>
   select(lat, long, loc, match)
@@ -43,7 +43,7 @@ spat_pollen <- full_melt |>
 full_spat_pollen <- full_melt |>
   mutate(loc = paste0(lat,'_',long))
 
-# Add the corresponding climate point to the full prism dataset
+# Add the corresponding CMIP point to the full pollen dataset
 full_spat_pollen <- full_spat_pollen |>
   full_join(spat_pollen, by = c('long', 'lat', 'loc'))
 
@@ -98,7 +98,7 @@ wide_precip <- full_spat_climate |>
                 Precipitation_12 = `12`)
 
 full_spat_climate <- wide_temp |>
-  full_join(wide_precip, by = c('Longitude', 'Latitude', 'Year', 'loc'))
+  full_join(wide_precip, by = c('Longitude', 'Latitude', 'Year', 'loc', 'YBP'))
 
 # Add the index to the full data frame
 full_spat_climate <- full_spat_climate |>
@@ -106,13 +106,13 @@ full_spat_climate <- full_spat_climate |>
 
 # Prepare pollen data for joining with climate
 match_clim <- full_spat_pollen |>
-  dplyr::rename(Year = time,
+  dplyr::rename(YBP = time,
          Longitude = long,
          Latitude = lat)
 
 # Spatially match each pollen point to a climate point
 match_clim <- match_clim |>
-  left_join(full_spat_climate, by = c('Year', 'match'))
+  left_join(full_spat_climate, by = c('YBP', 'match'))
 
 # Formatting
 match_clim <- match_clim |>
@@ -161,58 +161,105 @@ match_clim_long$Downscale_Precipitation <- predictions_precip
 
 # Pivot climate portion of dataframe
 downscale_climate_wide <- match_clim_long |>
-  select(-CMIP_Longitude, -CMIP_Latitude, -CMIP_Temperature, -CMIP_Precipitation) |>
+  dplyr::select(-CMIP_Longitude, -CMIP_Latitude, -CMIP_Temperature, -CMIP_Precipitation) |>
   pivot_wider(names_from = 'Month',
               values_from = Downscale_Temperature:Downscale_Precipitation,
-              id_cols = c('Year', 'PRISM_Longitude', 'PRISM_Latitude'))
+              id_cols = c('Year', 'PRISM_Longitude', 'PRISM_Latitude', 'YBP'))
 
 # Match pivoted data with pollen
-xydata <- match_clim_long |>
-  filter(Month == 1) |>
-  select(Year:PRISM_Latitude) |>
-  full_join(downscale_climate_wide, by = c('Year', 'PRISM_Longitude', 'PRISM_Latitude')) |>
-  filter(Year < 2000)
+xydata <- match_clim |>
+  select(YBP:Pollen_Latitude, Year) |>
+  rename(PRISM_Longitude = Pollen_Longitude,
+         PRISM_Latitude = Pollen_Latitude) |>
+  full_join(downscale_climate_wide, by = c('Year', 'PRISM_Longitude',
+                                           'PRISM_Latitude', 'YBP')) |>
+  filter(YBP <= 1900)
 
 # Plotting to make sure everything looks correct
 states <- map_data('state') |> filter(region == c('michigan', 'minnesota', 'wisconsin'))
 
 xydata |>
+  filter(YBP == 200) |>
   select(-(Downscale_Precipitation_1:Downscale_Precipitation_12)) |>
   pivot_longer(Downscale_Temperature_1:Downscale_Temperature_12, names_to = 'Variable', values_to = 'Value') |>
+  mutate(Variable = if_else(Variable == 'Downscale_Temperature_1', 'January', Variable),
+         Variable = if_else(Variable == 'Downscale_Temperature_2', 'February', Variable),
+         Variable = if_else(Variable == 'Downscale_Temperature_3', 'March', Variable),
+         Variable = if_else(Variable == 'Downscale_Temperature_4', 'April', Variable),
+         Variable = if_else(Variable == 'Downscale_Temperature_5', 'May', Variable),
+         Variable = if_else(Variable == 'Downscale_Temperature_6', 'June', Variable),
+         Variable = if_else(Variable == 'Downscale_Temperature_7', 'July', Variable),
+         Variable = if_else(Variable == 'Downscale_Temperature_8', 'August', Variable),
+         Variable = if_else(Variable == 'Downscale_Temperature_9', 'September', Variable),
+         Variable = if_else(Variable == 'Downscale_Temperature_10', 'October', Variable),
+         Variable = if_else(Variable == 'Downscale_Temperature_11', 'November', Variable),
+         Variable = if_else(Variable == 'Downscale_Temperature_12', 'December', Variable),
+         Variable = factor(Variable, levels = c('January', 'February',
+                                                   'March', 'April', 'May',
+                                                   'June', 'July', 'August',
+                                                   'September', 'October',
+                                                   'November', 'December'))) |>
   ggplot(aes(x = PRISM_Longitude, y = PRISM_Latitude, color = Value)) +
-  geom_polygon(data = states, aes(x = long, y = lat, group = group), color = 'black', fill = NA) +
   geom_point() +
-  facet_wrap(~Variable)
+  geom_polygon(data = states, aes(x = long, y = lat, group = group), color = 'black', fill = NA) +
+  facet_wrap(~Variable) +
+  theme_void() +
+  scale_color_distiller(palette = 'YlOrRd', direction = 'horizontal',
+                        name = 'Average Monthly\nTemperature')
 
 xydata |>
   select(-(Downscale_Temperature_1:Downscale_Temperature_12)) |>
   pivot_longer(Downscale_Precipitation_1:Downscale_Precipitation_12, names_to = 'Variable', values_to = 'Value') |>
+  mutate(Variable = if_else(Variable == 'Downscale_Precipitation_1', 'January', Variable),
+         Variable = if_else(Variable == 'Downscale_Precipitation_2', 'February', Variable),
+         Variable = if_else(Variable == 'Downscale_Precipitation_3', 'March', Variable),
+         Variable = if_else(Variable == 'Downscale_Precipitation_4', 'April', Variable),
+         Variable = if_else(Variable == 'Downscale_Precipitation_5', 'May', Variable),
+         Variable = if_else(Variable == 'Downscale_Precipitation_6', 'June', Variable),
+         Variable = if_else(Variable == 'Downscale_Precipitation_7', 'July', Variable),
+         Variable = if_else(Variable == 'Downscale_Precipitation_8', 'August', Variable),
+         Variable = if_else(Variable == 'Downscale_Precipitation_9', 'September', Variable),
+         Variable = if_else(Variable == 'Downscale_Precipitation_10', 'October', Variable),
+         Variable = if_else(Variable == 'Downscale_Precipitation_11', 'November', Variable),
+         Variable = if_else(Variable == 'Downscale_Precipitation_12', 'December', Variable),
+         Variable = factor(Variable, levels = c('January', 'February',
+                                                'March', 'April', 'May',
+                                                'June', 'July', 'August',
+                                                'September', 'October',
+                                                'November', 'December'))) |>
   ggplot(aes(x = PRISM_Longitude, y = PRISM_Latitude, color = Value)) +
-  geom_polygon(data = states, aes(x = long, y = lat, group = group), color = 'black', fill = NA) +
   geom_point() +
-  facet_wrap(~Variable)
+  geom_polygon(data = states, aes(x = long, y = lat, group = group), color = 'black', fill = NA) +
+  facet_wrap(~Variable) +
+  scale_color_distiller(palette = 'Blues', direction = 'horizontal')
 
-# Subset for only monthly temperature  columns
-summary_temp <- xydata |>
-  select(Downscale_Temperature_1:Downscale_Temperature_12)
-
-# Find mean and SD (we're more interested in these summary statistics than monthly values)
-summary_temp$Mean <- rowMeans(summary_temp)
-summary_temp$SD <- rowSds(as.matrix(summary_temp[,1:12]))
-
-# Do the same for precipitation
-summary_precip <- xydata |>
-  select(Downscale_Precipitation_1:Downscale_Precipitation_12)
-
-summary_precip$Mean <- rowMeans(summary_precip)
-summary_precip$SD <- rowSds(as.matrix(summary_precip[,1:12]))
-
-# Put these summary statistics in the full data frame
-xydata$Mean_Temperature <- summary_temp$Mean
-xydata$SD_Temperature <- summary_temp$SD
-xydata$Mean_Precipitation <- summary_precip$Mean
-xydata$SD_Precipitation <- summary_precip$SD
-
+test <- xydata |>
+  dplyr::rowwise() |>
+  dplyr::mutate(Mean_Temperature = mean(c(Downscale_Temperature_1, Downscale_Temperature_2 ,
+                                          Downscale_Temperature_3, Downscale_Temperature_4,
+                                          Downscale_Temperature_5, Downscale_Temperature_6,
+                                          Downscale_Temperature_7, Downscale_Temperature_8,
+                                          Downscale_Temperature_9, Downscale_Temperature_10,
+                                          Downscale_Temperature_11, Downscale_Temperature_12)),
+                SD_Temperature = sd(c(Downscale_Temperature_1, Downscale_Temperature_2 ,
+                                      Downscale_Temperature_3, Downscale_Temperature_4,
+                                      Downscale_Temperature_5, Downscale_Temperature_6,
+                                      Downscale_Temperature_7, Downscale_Temperature_8,
+                                      Downscale_Temperature_9, Downscale_Temperature_10,
+                                      Downscale_Temperature_11, Downscale_Temperature_12)),
+                Mean_Precipitation = mean(c(Downscale_Precipitation_1, Downscale_Precipitation_2 ,
+                                            Downscale_Precipitation_3, Downscale_Precipitation_4,
+                                            Downscale_Precipitation_5, Downscale_Precipitation_6,
+                                            Downscale_Precipitation_7, Downscale_Precipitation_8,
+                                            Downscale_Precipitation_9, Downscale_Precipitation_10,
+                                            Downscale_Precipitation_11, Downscale_Precipitation_12)),
+                SD_Precipitation = sd(c(Downscale_Precipitation_1, Downscale_Precipitation_2 ,
+                                        Downscale_Precipitation_3, Downscale_Precipitation_4,
+                                        Downscale_Precipitation_5, Downscale_Precipitation_6,
+                                        Downscale_Precipitation_7, Downscale_Precipitation_8,
+                                        Downscale_Precipitation_9, Downscale_Precipitation_10,
+                                        Downscale_Precipitation_11, Downscale_Precipitation_12)))
+  
 # Save!
 save(xydata, file = 'downscaled_processed_xydata.RData')
 save(xydata, file = '~/Google Drive 2/longterm_feedbacks/FossilPollen/Data/downscaled_processed_xydata.RData')
