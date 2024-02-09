@@ -2,27 +2,19 @@
 
 rm(list = ls())
 
-library(dplyr)
-library(sp)
-library(rgeos)
-library(tibble)
-library(ggplot2)
-library(tidyr)
-library(matrixStats)
-
 load('CMIP_Reconstructions/processed.RData')
 load('full_melt_UMW.RData')
 load('Fit/latlon_fit.RData')
 
 # Take only one year to get unique locations
 # All locations have data for all time points
-spat_climate <- clim |> filter(Time == unique(Time)[1])
+spat_climate <- clim |> dplyr::filter(Time == unique(Time)[1])
 # make spatial data object
-coordinates(spat_climate) <- ~Longitude+Latitude
+spat_climate <- sf::st_as_sf(spat_climate, coords = c('Longitude', 'Latitude'))
 
 # Use the pollen dataset to identify all the locations we need climate for
-spat_pollen <- full_melt |> filter(time == unique(time)[1])
-coordinates(spat_pollen) <- ~long+lat
+spat_pollen <- full_melt |> dplyr::filter(time == unique(time)[1])
+spat_pollen <- sf::st_as_sf(spat_pollen, coords = c('long', 'lat'))
 
 # Find distance between all points
 d <- gDistance(spgeom1 = spat_pollen, spgeom2 = spat_climate, byid = T)
