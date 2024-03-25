@@ -72,10 +72,10 @@ test2 <- test2 |>
 # This is necessary because using the entire dataset
 # was really computationally expensive
 # since we will be finding pairwise distances
-min_lon <- -98.11711
-max_lon <- -82.59814
-min_lat <- 41.50088
-max_lat <- 50.17222
+min_lon <- -99
+max_lon <- -82
+min_lat <- 41
+max_lat <- 51
 
 # Filter for  climate reconstructions only within the bounds
 # of the pollen data
@@ -110,6 +110,7 @@ for(i in 1:length(clim_at_files)){
   temp <- arr_pr[[i]]
   temp <- temp[ind1,ind2,]
   arr_pr[[i]] <- temp
+  print(i)
 }
 
 # Reformatting
@@ -153,7 +154,7 @@ clim |>
   dplyr::filter(Year %in% c(min(Year), max(Year))) |>
   ggplot2::ggplot() +
   ggplot2::geom_sf(data = states, color = 'black', fill = NA) +
-  ggplot2::geom_point(ggplot2::aes(x = Longitude, y = Latitude, color = Temperature)) +
+  ggplot2::geom_jitter(ggplot2::aes(x = Longitude, y = Latitude, color = Temperature)) +
   ggplot2::coord_sf(crs = 'EPSG:4326') +
   ggplot2::facet_wrap(~Year) +
   ggplot2::scale_color_viridis_c(option = 'C') +
@@ -165,7 +166,7 @@ clim |>
   dplyr::filter(Year %in% c(min(Year), max(Year))) |>
   ggplot2::ggplot() +
   ggplot2::geom_sf(data = states, color = 'black', fill = NA) +
-  ggplot2::geom_point(ggplot2::aes(x = Longitude, y = Latitude, color = Precipitation)) +
+  ggplot2::geom_jitter(ggplot2::aes(x = Longitude, y = Latitude, color = Precipitation)) +
   ggplot2::coord_sf(crs = 'EPSG:4326') +
   ggplot2::facet_wrap(~Year) +
   ggplot2::scale_color_viridis_c(option = 'C') +
