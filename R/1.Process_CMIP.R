@@ -154,9 +154,9 @@ clim |>
   dplyr::filter(Year %in% c(min(Year), max(Year))) |>
   ggplot2::ggplot() +
   ggplot2::geom_sf(data = states, color = 'black', fill = NA) +
-  ggplot2::geom_jitter(ggplot2::aes(x = Longitude, y = Latitude, color = Temperature)) +
+  ggplot2::geom_point(ggplot2::aes(x = Longitude, y = Latitude, color = Temperature)) +
   ggplot2::coord_sf(crs = 'EPSG:4326') +
-  ggplot2::facet_wrap(~Year) +
+  ggplot2::facet_wrap(Month~Year) +
   ggplot2::scale_color_viridis_c(option = 'C') +
   ggplot2::theme_void() +
   ggplot2::theme(strip.text = ggplot2::element_text(size = 12))
@@ -166,9 +166,9 @@ clim |>
   dplyr::filter(Year %in% c(min(Year), max(Year))) |>
   ggplot2::ggplot() +
   ggplot2::geom_sf(data = states, color = 'black', fill = NA) +
-  ggplot2::geom_jitter(ggplot2::aes(x = Longitude, y = Latitude, color = Precipitation)) +
+  ggplot2::geom_point(ggplot2::aes(x = Longitude, y = Latitude, color = Precipitation)) +
   ggplot2::coord_sf(crs = 'EPSG:4326') +
-  ggplot2::facet_wrap(~Year) +
+  ggplot2::facet_wrap(Month~Year) +
   ggplot2::scale_color_viridis_c(option = 'C') +
   ggplot2::theme_void() +
   ggplot2::theme(strip.text = ggplot2::element_text(size = 12))

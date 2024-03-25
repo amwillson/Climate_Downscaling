@@ -44,10 +44,10 @@ ppt <- sf::st_transform(ppt, crs = 'EPSG:4326')
 tmean <- sf::st_transform(tmean, crs = 'EPSG:4326')
 
 # Boundaries of pollen data
-min_lon <- -98.11711
-max_lon <- -82.59814
-min_lat <- 41.50088
-max_lat <- 50.17222
+min_lon <- -99
+max_lon <- -82
+min_lat <- 41
+max_lat <- 51
 
 # Change back to regular data frame
 ppt <- sfheaders::sf_to_df(ppt, fill = TRUE)
@@ -124,7 +124,7 @@ average_clim |>
   ggplot2::geom_point(ggplot2::aes(x = Longitude, y = Latitude, color = PPT), alpha = 0.7, shape = '.') +
   ggplot2::geom_sf(data = states, color = 'black', fill = NA) +
   ggplot2::facet_wrap(~month) +
-  ggplot2::scale_color_viridis_c(option = 'H') +
+  ggplot2::scale_color_viridis_c(option = 'G', direction = -1) +
   ggplot2::theme_void()
 
 # Plot temperature

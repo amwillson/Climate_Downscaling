@@ -18,6 +18,7 @@ for(i in 1:length(clim_at_files)){
   
   at_file <- paste0('CMIP_Reconstructions/Historical_SurfaceAT/', clim_at_files[i])
   clim_at[[i]] <- ncdf4::nc_open(at_file)
+  print(i)
 }
 
 # Storage
@@ -72,10 +73,10 @@ test2 <- test2 |>
 # This is necessary because using the entire dataset
 # was really computationally expensive
 # since we will be finding pairwise distances
-min_lon <- -98.11711
-max_lon <- -82.59814
-min_lat <- 41.50088
-max_lat <- 50.17222
+min_lon <- -99
+max_lon <- -82
+min_lat <- 41
+max_lat <- 51
 
 # Filter the climate reconstructions only within the bounds
 # of the pollen data
